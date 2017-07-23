@@ -1,0 +1,11 @@
+<resources>
+	<string name="app_name">Gallery</string>
+	<string name="animals">Animals</string>
+	<string name="architecture">Architecture</string>
+	<string name="food">Food</string>
+	<string name="posters">Posters</string>
+	<string name="scenery">Scenery</string>
+
+	<!-- TODO: Remove or change this placeholder text -->
+	<string name="hello_blank_fragment">Hello blank fragment</string>
+</resources>

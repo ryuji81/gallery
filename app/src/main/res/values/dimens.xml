@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+	<dimen name="list_item_main_height">200dp</dimen>
+	<dimen name="list_item_main_vertical_padding">4dp</dimen>
+	<dimen name="list_item_main_horizontal_padding">2dp</dimen>
+	<dimen name="list_item_main_text_padding">10dp</dimen>
+	<dimen name="list_item_gallery_horizontal_padding">16dp</dimen>
+	<dimen name="list_item_gallery_image_padding">40dp</dimen>
+
+	<dimen name="fragment_gallery_padding">4dp</dimen>
+	<dimen name="fragment_gallery_image_padding">2dp</dimen>
+
+	<dimen name="gallery_change_distance">40dp</dimen>
+</resources>

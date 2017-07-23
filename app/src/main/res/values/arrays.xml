@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+	<string-array name="gallery_array">
+		<item>@string/animals</item>
+		<item>@string/architecture</item>
+		<item>@string/food</item>
+		<item>@string/posters</item>
+		<item>@string/scenery</item>
+	</string-array>
+
+	<string-array name="gallery_asset_array">
+
+	</string-array>
+</resources>

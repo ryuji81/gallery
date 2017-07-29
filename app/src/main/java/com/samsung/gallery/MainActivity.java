@@ -4,7 +4,10 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
-import android.support.v4.app.FragmentTransaction;
+import android.support.v4.app.FragmentManager;
+import android.support.v4.app.FragmentStatePagerAdapter;
+import android.support.v4.view.ViewPager;
+import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.CardView;
 import android.support.v7.widget.LinearLayoutManager;
@@ -37,7 +40,9 @@ public class MainActivity extends AppCompatActivity {
 	private List<MainInfo> mMainInfos = new ArrayList<>();
 
 	private MainInfo mSelectedInfo = null;
-	private List<String> mShownImages = new ArrayList<>();
+
+	private ViewPager mViewPager;
+
 	private float mX = -1;
 
 	@Override
@@ -69,6 +74,20 @@ public class MainActivity extends AppCompatActivity {
 			finish();
 			return;
 		}
+
+		mViewPager = (ViewPager) findViewById(R.id.main_view_pager);
+		ViewGroup.LayoutParams layoutParams = mViewPager.getLayoutParams();
+		// Figure out the image size base on device, minus some spacing
+		int side = metrics.widthPixels - (2 * getResources().getDimensionPixelSize(R.dimen.fragment_gallery_padding));
+		layoutParams.width = side;
+		layoutParams.height = side;
+		// Set size in layout, which affects the image view since it is the only view inside
+		mViewPager.setLayoutParams(layoutParams);
+
+		// The layout will be shown from X
+		mViewPager.setX(getResources().getDimensionPixelSize(R.dimen.fragment_gallery_padding));
+		// The layout will be shown from Y, which is the device height without action and nav bar, minus image side
+		mViewPager.setY(((metrics.heightPixels - side) / 2) - getActionBarHeight() - getNavigationBarHeight());
 
 		mRecyclerView = (RecyclerView) findViewById(R.id.main_recycler_view);
 		mRecyclerView.setHasFixedSize(true);
@@ -102,16 +121,15 @@ public class MainActivity extends AppCompatActivity {
 						mX = -1;
 						break;
 					case MotionEvent.ACTION_MOVE:
+						// Will need to investigate if there is a way change viewpager page with move instead of a fling.
+						// For now keep the existing way.
 						// Figure out how far we moved since long press
 						float diffX = e.getX() - mX;
 						if (Math.abs(diffX) > getResources().getDimensionPixelSize(R.dimen.gallery_change_distance)) {
 							// Detected a change in horizontal distance of 40dp pixel size
 							if (diffX > 0) {
 								// To the right
-								if (mShownImages.size() > 1) {
-									// Only show previous if there is one
-									showPreviousImage();
-								}
+								showPreviousImage();
 							} else {
 								// To the left, show next image
 								showNextImage();
@@ -132,13 +150,9 @@ public class MainActivity extends AppCompatActivity {
 		// We show the first image of the gallery selected after long press
 		mSelectedInfo = mainInfo;
 
-		String imagePath = Constants.ASSET_PATH + mSelectedInfo.getTitle() + "/" + mSelectedInfo.getFirstImage();
-		GalleryFragment galleryFragment = GalleryFragment.newInstance(imagePath);
-		FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
-		transaction.add(R.id.main_layout, galleryFragment, mainInfo.getFirstImage());
-		// Keep track which ones we showed.
-		mShownImages.add(mainInfo.getFirstImage());
-		transaction.commit();
+		// Set up a new adapter, or we can have a member and update its contents
+		mViewPager.setAdapter(new MainPagerAdapter(getSupportFragmentManager(), mSelectedInfo));
+		mViewPager.setVisibility(View.VISIBLE);
 	}
 
 	private void showNextImage() {
@@ -148,32 +162,20 @@ public class MainActivity extends AppCompatActivity {
 		}
 
 		String[] images = mSelectedInfo.getImages();
-		if (images.length == mShownImages.size()) {
+		if ((images.length - 1) == mViewPager.getCurrentItem()) {
 			// No more images
 			return;
 		}
-
-		FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
-		// If add new, slide from right to left, add to pop stack.  If remove, slide from left to right.
-		transaction.setCustomAnimations(R.anim.slide_in_right, R.anim.slide_out_left, R.anim.slide_in_left, R.anim.slide_out_right);
-		String image = mSelectedInfo.getImages()[mShownImages.size()];
-		String imagePath = Constants.ASSET_PATH + mSelectedInfo.getTitle() + "/" + image;
-		// Keep track which ones we showed.
-		mShownImages.add(image);
-		// New fragment added with animation
-		GalleryFragment galleryFragment = GalleryFragment.newInstance(imagePath);
-		transaction.add(R.id.main_layout, galleryFragment, image);
-		// Add to backstack to pop later
-		transaction.addToBackStack(image);
-		transaction.commit();
+		// Set next current item
+		mViewPager.setCurrentItem(mViewPager.getCurrentItem() + 1, true);
 	}
 
 	private void showPreviousImage() {
-		if (mShownImages.size() > 1) {
-			// If we have showed more than 1 images, simply pop and remove.
-			getSupportFragmentManager().popBackStack();
-			mShownImages.remove(mShownImages.size() - 1);
+		if (mViewPager.getCurrentItem() == 0) {
+			return;
 		}
+		// Go back to previous item
+		mViewPager.setCurrentItem(mViewPager.getCurrentItem() - 1, true);
 	}
 
 	private void dismissGallery() {
@@ -181,18 +183,21 @@ public class MainActivity extends AppCompatActivity {
 			return;
 		}
 
-		FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
-		for (String image : mShownImages) {
-			// Remove all fragments we showed.
-			Fragment fragment = getSupportFragmentManager().findFragmentByTag(image);
-			if (fragment != null) {
-				transaction.remove(fragment);
-			}
-		}
-		transaction.commit();
-		// Clear
+		// Hide view pager again.
+		mViewPager.setAdapter(null);
+		mViewPager.setVisibility(View.GONE);
 		mSelectedInfo = null;
-		mShownImages.clear();
+	}
+
+	private int getActionBarHeight() {
+		// Helper function to get action bar height
+		ActionBar actionBar = getSupportActionBar();
+		return (actionBar == null) ? 0 : actionBar.getHeight();
+	}
+
+	private int getNavigationBarHeight() {
+		int resourceId = getResources().getIdentifier("navigation_bar_height", "dimen", "android");
+		return (resourceId > 0) ? getResources().getDimensionPixelSize(resourceId) : 0;
 	}
 
 	private class MainAdapter extends RecyclerView.Adapter<MainAdapter.ViewHolder> {
@@ -297,6 +302,27 @@ public class MainActivity extends AppCompatActivity {
 				return mImages[0];
 			}
 			return null;
+		}
+	}
+
+	private class MainPagerAdapter extends FragmentStatePagerAdapter {
+		// Pager Adapter to show the gallery image fragments
+		private MainInfo mMainInfo;
+
+		public MainPagerAdapter(FragmentManager fragmentManager, MainInfo mainInfo) {
+			super(fragmentManager);
+			mMainInfo = mainInfo;
+		}
+
+		@Override
+		public Fragment getItem(int position) {
+			String imagePath = Constants.ASSET_PATH + mMainInfo.getTitle() + "/" + mMainInfo.getImages()[position];
+			return GalleryFragment.newInstance(imagePath);
+		}
+
+		@Override
+		public int getCount() {
+			return mMainInfo.getImages().length;
 		}
 	}
 }
